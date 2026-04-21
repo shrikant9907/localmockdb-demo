@@ -1,65 +1,27 @@
-# localmockdb React Demo
+# localmockdb Todo Tool Demo
 
-A complete working demo of the **localmockdb** package built with React.
+A compact mobile-first React demo built with `localmockdb`.
 
-👉 Live Demo:  
-https://shrikant9907.github.io/localmockdb-demo/
+## What changed
 
-👉 NPM Package:  
-https://www.npmjs.com/package/localmockdb
+- tool-style UI instead of website-style layout
+- mobile-friendly card-based todo flow
+- localStorage starts empty on first load
+- demo data can be seeded manually only when needed
+- full CRUD testing with localmockdb responses visible in-app
 
----
+## Features
 
-## About localmockdb
-
-localmockdb is a simple mock REST API for frontend developers.
-
-- No backend required
-- Uses localStorage for persistence
-- Works like real APIs (GET, POST, PUT, PATCH, DELETE)
-
-Perfect for:
-- Learning frontend
-- Building UI first
-- Testing CRUD flows
-- Demos & prototypes
-
----
-
-## What this demo covers
-
-This project demonstrates all core features of localmockdb:
-
-- Create records (POST)
-- Read all records (GET)
-- Read single record (GET by id)
-- Replace record (PUT)
-- Update record (PATCH)
-- Delete record (DELETE)
-- Pagination support
-- Clear a collection
-- Reset full database
-- localStorage persistence (data survives refresh)
-
----
-
-## How this demo is built
-
-This demo uses:
-
-- React + Vite
-- localmockdb as a mock backend
-- GitHub Pages for deployment
-
-The app directly calls the mock API like a real backend:
-
-```ts
-await db.post("/users", { name: "Shrikant" });
-await db.get("/users");
-await db.patch("/users/1", { name: "Updated" });
-```
-
----
+- create todo
+- list todos
+- get single todo
+- replace todo with PUT
+- toggle status with PATCH
+- delete todo
+- clear collection
+- reset database
+- pagination
+- localStorage persistence
 
 ## Run locally
 
@@ -68,65 +30,14 @@ npm install
 npm run dev
 ```
 
-Open:
-http://localhost:5173
-
----
-
-## Build project
+## Build
 
 ```bash
 npm run build
 ```
 
----
-
-## Deploy to GitHub Pages
+## Deploy
 
 ```bash
 npm run deploy
 ```
-
-### Before deploying:
-
-1. Push project to GitHub
-2. Go to **Settings → Pages**
-3. Select:
-   - Source: Deploy from branch
-   - Branch: `gh-pages`
-   - Folder: `/ (root)`
-
----
-
-## Install localmockdb
-
-```bash
-npm install localmockdb
-```
-
----
-
-## Why this demo is useful
-
-This project helps you:
-
-- Understand how localmockdb works in real apps
-- Test full CRUD flows without backend
-- Learn API-driven frontend development
-- Quickly prototype ideas
-
----
-
-## Use cases
-
-- Frontend interviews
-- Learning React / Next.js
-- MVP development
-- Demo apps
-- UI testing without APIs
-
----
-
-## License
-
-MIT

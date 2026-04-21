@@ -1,58 +1,43 @@
 import { db } from "./db";
 
-const initialUsers = [
+const demoTodos = [
   {
-    name: "Shrikant",
-    email: "shrikant@example.com",
-    role: "Admin",
-    status: "Active",
+    title: "Plan homepage sections",
+    notes: "Finalize hero, features, and CTA blocks.",
+    priority: "high",
+    status: "in-progress",
+    dueDate: "2026-04-25",
   },
   {
-    name: "Aman",
-    email: "aman@example.com",
-    role: "Editor",
-    status: "Active",
+    title: "Record package demo video",
+    notes: "Keep it under 90 seconds and show CRUD flow.",
+    priority: "medium",
+    status: "todo",
+    dueDate: "2026-04-28",
   },
   {
-    name: "Priya",
-    email: "priya@example.com",
-    role: "Viewer",
-    status: "Inactive",
+    title: "Ship npm README update",
+    notes: "Add live demo link and quick start examples.",
+    priority: "low",
+    status: "done",
+    dueDate: "2026-04-20",
   },
-  {
-    name: "Neha",
-    email: "neha@example.com",
-    role: "Support",
-    status: "Active",
-  },
-  {
-    name: "Rohit",
-    email: "rohit@example.com",
-    role: "Editor",
-    status: "Pending",
-  },
-  {
-    name: "Kiran",
-    email: "kiran@example.com",
-    role: "Viewer",
-    status: "Active",
-  },
-];
+] as const;
 
-export async function seedUsersCollection(): Promise<void> {
-  const response = await db.get("/users");
+export async function seedTodosCollection(): Promise<void> {
+  const response = await db.get("/todos");
 
   if (!response.success) {
     return;
   }
 
-  const users = Array.isArray(response.data) ? response.data : [];
+  const todos = Array.isArray(response.data) ? response.data : [];
 
-  if (users.length > 0) {
+  if (todos.length > 0) {
     return;
   }
 
-  for (const user of initialUsers) {
-    await db.post("/users", user);
+  for (const todo of demoTodos) {
+    await db.post("/todos", todo);
   }
 }

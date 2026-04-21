@@ -8,12 +8,16 @@ export type JsonValue =
 
 export type JsonRecord = Record<string, JsonValue>;
 
-export type UserRecord = {
+export type TodoPriority = "low" | "medium" | "high";
+export type TodoStatus = "todo" | "in-progress" | "done";
+
+export type TodoRecord = {
   id: string;
-  name: string;
-  email: string;
-  role: string;
-  status: string;
+  title: string;
+  notes: string;
+  priority: TodoPriority;
+  status: TodoStatus;
+  dueDate: string;
   createdAt?: string;
   updatedAt?: string;
 };

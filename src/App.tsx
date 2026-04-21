@@ -1,47 +1,69 @@
 import { useEffect, useMemo, useState } from "react";
-import SectionCard from "./components/SectionCard";
 import ResponseViewer from "./components/ResponseViewer";
-import PatchUserForm from "./features/users/PatchUserForm";
-import UserForm, { type UserFormValues } from "./features/users/UserForm";
-import UsersTable from "./features/users/UsersTable";
+import TodoForm from "./features/todos/TodoForm";
+import TodoList from "./features/todos/TodoList";
 import {
-  clearUsersCollection,
-  createUser,
-  getUserById,
+  clearTodosCollection,
+  createTodo,
+  getTodoById,
   listCollections,
-  listUsers,
-  patchUser,
-  removeUser,
-  replaceUser,
+  listTodos,
+  patchTodo,
+  removeTodo,
+  replaceTodo,
   resetDatabase,
-} from "./features/users/userApi";
-import { seedUsersCollection } from "./lib/seed";
-import type { ApiResponse, JsonValue, UserRecord } from "./lib/types";
+} from "./features/todos/todoApi";
+import { seedTodosCollection } from "./lib/seed";
+import type { ApiResponse, JsonValue, TodoRecord, TodoStatus } from "./lib/types";
 
-const pageSize = 5;
+const pageSize = 8;
+
+type FilterValue = "all" | TodoStatus;
+type ModalState =
+  | { type: "closed" }
+  | { type: "create" }
+  | { type: "edit"; todo: TodoRecord }
+  | { type: "delete"; todo: TodoRecord }
+  | { type: "reset" }
+  | { type: "clear" };
+
+function getEmptyTodoPayload() {
+  return {
+    title: "",
+    notes: "",
+    priority: "medium" as const,
+    status: "todo" as const,
+    dueDate: "",
+  };
+}
 
 export default function App() {
-  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [todos, setTodos] = useState<TodoRecord[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [page, setPage] = useState(1);
+  const [filter, setFilter] = useState<FilterValue>("all");
   const [collections, setCollections] = useState<string[]>([]);
   const [latestResponse, setLatestResponse] = useState<JsonValue | null>(null);
-  const [singleUserResponse, setSingleUserResponse] = useState<JsonValue | null>(null);
+  const [singleTodoResponse, setSingleTodoResponse] = useState<JsonValue | null>(null);
   const [statusMessage, setStatusMessage] = useState("Ready");
-  const [meta, setMeta] = useState<ApiResponse<UserRecord[]>["meta"] | undefined>();
+  const [meta, setMeta] = useState<ApiResponse<TodoRecord[]>["meta"] | undefined>();
+  const [modal, setModal] = useState<ModalState>({ type: "closed" });
 
-  const selectedUser = useMemo(() => {
-    return users.find((user) => user.id === selectedId) ?? null;
-  }, [selectedId, users]);
+  const selectedTodo = useMemo(() => {
+    return todos.find((todo) => todo.id === selectedId) ?? null;
+  }, [selectedId, todos]);
 
   useEffect(() => {
     void initialize();
   }, []);
 
   async function initialize() {
-    await seedUsersCollection();
     await refreshCollections();
-    await refreshUsers(1);
+    await refreshTodos(1);
+  }
+
+  function closeModal() {
+    setModal({ type: "closed" });
   }
 
   async function refreshCollections() {
@@ -49,22 +71,25 @@ export default function App() {
 
     if (response.success && Array.isArray(response.data)) {
       setCollections(response.data);
+      return;
     }
+
+    setCollections([]);
   }
 
-  async function refreshUsers(nextPage = page) {
-    const response = await listUsers(nextPage, pageSize);
+  async function refreshTodos(nextPage = page) {
+    const response = await listTodos(nextPage, pageSize);
     setLatestResponse(response as unknown as JsonValue);
     setStatusMessage(response.message);
 
     if (!response.success || !Array.isArray(response.data)) {
-      setUsers([]);
+      setTodos([]);
       setMeta(response.meta);
       setSelectedId("");
       return;
     }
 
-    setUsers(response.data);
+    setTodos(response.data);
     setMeta(response.meta);
     setPage(nextPage);
 
@@ -73,236 +98,366 @@ export default function App() {
       return;
     }
 
-    const hasSelectedUser = response.data.some((user) => user.id === selectedId);
+    const hasSelection = response.data.some((todo) => todo.id === selectedId);
 
-    if (!hasSelectedUser) {
+    if (!hasSelection) {
       setSelectedId(response.data[0].id);
     }
   }
 
-  async function handleCreate(values: UserFormValues) {
-    const response = await createUser(values);
+  async function handleCreate(values: ReturnType<typeof getEmptyTodoPayload>) {
+    const response = await createTodo(values);
     setLatestResponse(response as unknown as JsonValue);
     setStatusMessage(response.message);
     await refreshCollections();
-    await refreshUsers(1);
+    await refreshTodos(1);
+    closeModal();
   }
 
-  async function handleReplace(values: UserFormValues) {
-    if (!selectedId) {
-      setStatusMessage("Select a user first.");
+  async function handleReplace(values: ReturnType<typeof getEmptyTodoPayload>) {
+    if (modal.type !== "edit") {
+      setStatusMessage("Choose a task to edit.");
       return;
     }
 
-    const response = await replaceUser(selectedId, values);
+    const response = await replaceTodo(modal.todo.id, values);
     setLatestResponse(response as unknown as JsonValue);
     setStatusMessage(response.message);
-    await refreshUsers(page);
+    setSelectedId(modal.todo.id);
+    await refreshTodos(page);
+    await handleFetchSingle(modal.todo.id);
+    closeModal();
   }
 
-  async function handlePatch(payload: { role?: string; status?: string }) {
-    if (!selectedId) {
-      setStatusMessage("Select a user first.");
+  async function handleFetchSingle(id = selectedId) {
+    if (!id) {
+      setStatusMessage("Select a task first.");
       return;
     }
 
-    const response = await patchUser(selectedId, payload);
+    const response = await getTodoById(id);
+    setSingleTodoResponse(response as unknown as JsonValue);
+    setStatusMessage(response.message);
+  }
+
+  async function handleToggleStatus(todo: TodoRecord) {
+    const nextStatus: TodoStatus = todo.status === "done" ? "todo" : "done";
+    const response = await patchTodo(todo.id, { status: nextStatus });
     setLatestResponse(response as unknown as JsonValue);
     setStatusMessage(response.message);
-    await refreshUsers(page);
+    setSelectedId(todo.id);
+    await refreshTodos(page);
+
+    if (selectedId === todo.id) {
+      await handleFetchSingle(todo.id);
+    }
   }
 
-  async function handleFetchSingle() {
-    if (!selectedId) {
-      setStatusMessage("Select a user first.");
+  async function handleDelete(todoId?: string) {
+    const id = todoId ?? selectedId;
+
+    if (!id) {
+      setStatusMessage("Select a task first.");
       return;
     }
 
-    const response = await getUserById(selectedId);
-    setSingleUserResponse(response as unknown as JsonValue);
-    setStatusMessage(response.message);
-  }
-
-  async function handleDelete() {
-    if (!selectedId) {
-      setStatusMessage("Select a user first.");
-      return;
-    }
-
-    const response = await removeUser(selectedId);
+    const response = await removeTodo(id);
     setLatestResponse(response as unknown as JsonValue);
     setStatusMessage(response.message);
+    setSingleTodoResponse(null);
     await refreshCollections();
 
-    const nextPage = page > 1 && users.length === 1 ? page - 1 : page;
-    await refreshUsers(nextPage);
-    setSingleUserResponse(null);
+    const isLastVisibleTask = todos.length === 1;
+    const nextPage = page > 1 && isLastVisibleTask ? page - 1 : page;
+
+    closeModal();
+    await refreshTodos(nextPage);
   }
 
   async function handleClearCollection() {
-    const response = await clearUsersCollection();
+    const response = await clearTodosCollection();
     setLatestResponse(response as unknown as JsonValue);
     setStatusMessage(response.message);
-    setSingleUserResponse(null);
+    setSingleTodoResponse(null);
+    setSelectedId("");
+    closeModal();
     await refreshCollections();
-    await refreshUsers(1);
+    await refreshTodos(1);
   }
 
   async function handleResetDatabase() {
     const response = await resetDatabase();
     setLatestResponse(response as unknown as JsonValue);
     setStatusMessage(response.message);
-    setSingleUserResponse(null);
-    setCollections([]);
+    setSingleTodoResponse(null);
+    setSelectedId("");
+    closeModal();
     await initialize();
   }
 
   async function handleSeedDemo() {
-    await seedUsersCollection();
+    await seedTodosCollection();
     await refreshCollections();
-    await refreshUsers(1);
-    setStatusMessage("Demo users ready.");
+    await refreshTodos(1);
+    setStatusMessage("Demo tasks added.");
   }
 
+  const filteredTodos = todos.filter((todo) => {
+    if (filter === "all") {
+      return true;
+    }
+
+    return todo.status === filter;
+  });
+
   const totalPages = meta?.totalPages ?? 1;
+  const totalCount = meta?.total ?? 0;
 
   return (
-    <main className="app-shell">
-      <header className="hero">
-        <span className="badge">React + localmockdb</span>
-        <h1>localmockdb Complete Demo</h1>
-        <p className="hero__text">
-          Test create, list, single read, replace, patch, delete, pagination, clear
-          collection, reset database, and localStorage persistence in one React app.
-        </p>
-
-        <div className="hero__actions">
-          <button className="button button--primary" onClick={() => void handleSeedDemo()}>
-            Seed demo users
-          </button>
-          <button className="button button--ghost" onClick={() => void refreshUsers(page)}>
-            Refresh list
-          </button>
+    <main className="tool-shell">
+      <section className="tool-panel tool-panel--hero">
+        <div className="app-kicker">localmockdb todo tool</div>
+        <div className="hero-row">
+          <div>
+            <h1>Todo tester</h1>
+            <p>
+              Mobile-first task tool built to test localmockdb with simple CRUD actions and
+              localStorage persistence.
+            </p>
+          </div>
+          <div className="hero-actions">
+            <button className="button button--primary" onClick={() => setModal({ type: "create" })}>
+              Add task
+            </button>
+            <button className="button button--ghost" onClick={() => void handleSeedDemo()}>
+              Seed demo
+            </button>
+          </div>
         </div>
-      </header>
 
-      <section className="status-bar">
-        <div>
-          <strong>Status:</strong> {statusMessage}
-        </div>
-        <div>
-          <strong>Collections:</strong> {collections.length > 0 ? collections.join(", ") : "None"}
+        <div className="stats-row">
+          <div className="stat-chip">
+            <span>Total</span>
+            <strong>{totalCount}</strong>
+          </div>
+          <div className="stat-chip">
+            <span>Collections</span>
+            <strong>{collections.length}</strong>
+          </div>
+          <div className="stat-chip stat-chip--wide">
+            <span>Status</span>
+            <strong>{statusMessage}</strong>
+          </div>
         </div>
       </section>
 
-      <div className="layout-grid">
-        <SectionCard
-          title="Users collection"
-          description="This table is loaded from localmockdb. Data stays after refresh because the package uses localStorage."
-          actions={
-            <div className="inline-actions">
-              <button className="button button--ghost" onClick={() => void handleFetchSingle()}>
-                GET selected
-              </button>
-              <button className="button button--danger" onClick={() => void handleDelete()}>
-                DELETE selected
-              </button>
-            </div>
-          }
-        >
-          <UsersTable users={users} selectedId={selectedId} onSelect={setSelectedId} />
-
-          <div className="pagination">
-            <button
-              className="button button--ghost"
-              disabled={page <= 1}
-              onClick={() => void refreshUsers(page - 1)}
-            >
-              Previous
-            </button>
-            <span>
-              Page {page} of {totalPages}
-            </span>
-            <button
-              className="button button--ghost"
-              disabled={page >= totalPages}
-              onClick={() => void refreshUsers(page + 1)}
-            >
-              Next
-            </button>
+      <section className="tool-panel">
+        <div className="section-heading">
+          <div>
+            <div className="section-title">Tasks</div>
+            <div className="section-subtitle">Starts empty. Seed data only when needed.</div>
           </div>
-        </SectionCard>
+          <button className="button button--ghost" onClick={() => void refreshTodos(page)}>
+            Refresh
+          </button>
+        </div>
 
-        <SectionCard
-          title="POST /users"
-          description="Create new records with auto-generated ID and timestamps."
-        >
-          <UserForm mode="create" submitLabel="Create user" onSubmit={handleCreate} />
-        </SectionCard>
+        <div className="filter-row">
+          {(["all", "todo", "in-progress", "done"] as const).map((value) => (
+            <button
+              key={value}
+              className={`chip-button${filter === value ? " is-active" : ""}`}
+              type="button"
+              onClick={() => setFilter(value)}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
 
-        <SectionCard
-          title="PUT /users/:id"
-          description="Replace the selected user with a full new payload."
-        >
-          <UserForm
-            key={selectedUser?.id ?? "replace-form"}
-            mode="replace"
-            submitLabel="Replace selected user"
-            initialValues={
-              selectedUser
-                ? {
-                    name: selectedUser.name,
-                    email: selectedUser.email,
-                    role: selectedUser.role,
-                    status: selectedUser.status,
-                  }
-                : undefined
-            }
+        <TodoList
+          todos={filteredTodos}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onToggleStatus={handleToggleStatus}
+          onEdit={(todo) => setModal({ type: "edit", todo })}
+          onDelete={(todo) => setModal({ type: "delete", todo })}
+        />
+
+        <div className="pager-row">
+          <button
+            className="button button--ghost"
+            disabled={page <= 1}
+            onClick={() => void refreshTodos(page - 1)}
+          >
+            Previous
+          </button>
+          <span>
+            Page {page} / {totalPages}
+          </span>
+          <button
+            className="button button--ghost"
+            disabled={page >= totalPages}
+            onClick={() => void refreshTodos(page + 1)}
+          >
+            Next
+          </button>
+        </div>
+      </section>
+
+      <section className="tool-panel">
+        <div className="section-title">Tool actions</div>
+        <div className="action-grid">
+          <button className="button button--secondary" onClick={() => void handleFetchSingle()}>
+            GET selected
+          </button>
+          <button
+            className="button button--secondary"
+            disabled={!selectedTodo}
+            onClick={() => selectedTodo && void handleToggleStatus(selectedTodo)}
+          >
+            PATCH toggle done
+          </button>
+          <button className="button button--warning" onClick={() => setModal({ type: "clear" })}>
+            Clear todos
+          </button>
+          <button className="button button--ghost" onClick={() => setModal({ type: "reset" })}>
+            Reset database
+          </button>
+        </div>
+      </section>
+
+      <section className="tool-panel">
+        <ResponseViewer title="Latest API response" value={latestResponse} />
+      </section>
+
+      <section className="tool-panel">
+        <ResponseViewer title="GET selected response" value={singleTodoResponse} />
+      </section>
+
+      {modal.type === "create" ? (
+        <ModalShell title="Add task" onClose={closeModal}>
+          <TodoForm submitLabel="Create task" onSubmit={handleCreate} />
+        </ModalShell>
+      ) : null}
+
+      {modal.type === "edit" ? (
+        <ModalShell title="Edit task" onClose={closeModal}>
+          <TodoForm
+            key={modal.todo.id}
+            submitLabel="Save changes"
+            initialValues={{
+              title: modal.todo.title,
+              notes: modal.todo.notes,
+              priority: modal.todo.priority,
+              status: modal.todo.status,
+              dueDate: modal.todo.dueDate,
+            }}
             onSubmit={handleReplace}
           />
-        </SectionCard>
+        </ModalShell>
+      ) : null}
 
-        <SectionCard
-          title="PATCH /users/:id"
-          description="Update only a few fields on the selected user."
-        >
-          <PatchUserForm onSubmit={handlePatch} />
-        </SectionCard>
+      {modal.type === "delete" ? (
+        <ConfirmModal
+          title="Delete task?"
+          description={`This will permanently remove \"${modal.todo.title}\".`}
+          confirmLabel="Delete task"
+          confirmClassName="button button--danger"
+          onClose={closeModal}
+          onConfirm={() => handleDelete(modal.todo.id)}
+        />
+      ) : null}
 
-        <SectionCard
-          title="Collection tools"
-          description="Useful actions to test the package quickly."
-        >
-          <div className="tools-grid">
-            <button className="button button--ghost" onClick={() => void handleFetchSingle()}>
-              Fetch selected user
-            </button>
-            <button className="button button--ghost" onClick={() => void refreshCollections()}>
-              List collections
-            </button>
-            <button className="button button--warning" onClick={() => void handleClearCollection()}>
-              Clear users collection
-            </button>
-            <button className="button button--danger" onClick={() => void handleResetDatabase()}>
-              Reset whole database
-            </button>
-          </div>
-        </SectionCard>
+      {modal.type === "clear" ? (
+        <ConfirmModal
+          title="Clear all todos?"
+          description="This removes every task from the todos collection."
+          confirmLabel="Clear todos"
+          confirmClassName="button button--warning"
+          onClose={closeModal}
+          onConfirm={handleClearCollection}
+        />
+      ) : null}
 
-        <SectionCard
-          title="Latest API response"
-          description="Useful for beginners to understand how each action responds."
-        >
-          <ResponseViewer title="Response" value={latestResponse} />
-        </SectionCard>
-
-        <SectionCard
-          title="Selected user response"
-          description="Shows the raw GET /users/:id response."
-        >
-          <ResponseViewer title="Single record" value={singleUserResponse} />
-        </SectionCard>
-      </div>
+      {modal.type === "reset" ? (
+        <ConfirmModal
+          title="Reset local database?"
+          description="This resets the full localmockdb storage for this demo."
+          confirmLabel="Reset database"
+          confirmClassName="button button--ghost modal-confirm-reset"
+          onClose={closeModal}
+          onConfirm={handleResetDatabase}
+        />
+      ) : null}
     </main>
+  );
+}
+
+type ModalShellProps = {
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+};
+
+function ModalShell({ title, children, onClose }: ModalShellProps) {
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="modal-card">
+        <div className="modal-header">
+          <div>
+            <div className="section-title">{title}</div>
+          </div>
+          <button className="icon-button" type="button" onClick={onClose} aria-label="Close modal">
+            ✕
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+type ConfirmModalProps = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  confirmClassName: string;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+};
+
+function ConfirmModal({
+  title,
+  description,
+  confirmLabel,
+  confirmClassName,
+  onClose,
+  onConfirm,
+}: ConfirmModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleConfirm() {
+    setIsSubmitting(true);
+
+    try {
+      await onConfirm();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <ModalShell title={title} onClose={onClose}>
+      <div className="confirm-copy">{description}</div>
+      <div className="modal-actions">
+        <button className="button button--ghost" type="button" onClick={onClose}>
+          Cancel
+        </button>
+        <button className={confirmClassName} type="button" disabled={isSubmitting} onClick={() => void handleConfirm()}>
+          {isSubmitting ? "Working..." : confirmLabel}
+        </button>
+      </div>
+    </ModalShell>
   );
 }
