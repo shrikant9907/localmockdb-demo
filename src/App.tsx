@@ -337,13 +337,14 @@ export default function App() {
 
       {modal.type === "create" ? (
         <ModalShell title="Add task" onClose={closeModal}>
-          <TodoForm submitLabel="Create task" onSubmit={handleCreate} />
+          <TodoForm title="Demo" submitLabel="Create task" onSubmit={handleCreate} />
         </ModalShell>
       ) : null}
 
       {modal.type === "edit" ? (
         <ModalShell title="Edit task" onClose={closeModal}>
           <TodoForm
+            title="Demo"
             key={modal.todo.id}
             submitLabel="Save changes"
             initialValues={{

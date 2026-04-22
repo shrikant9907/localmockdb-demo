@@ -48,3 +48,13 @@ export type ApiResponse<T> = {
   error: ApiErrorShape | null;
   meta?: ApiMetaShape;
 };
+
+export type UserRecord = {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+  createdAt: string;
+  status: string;
+  updatedAt: string;
+};

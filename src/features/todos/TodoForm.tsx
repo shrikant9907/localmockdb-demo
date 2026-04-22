@@ -6,7 +6,7 @@ type TodoFormProps = {
   title: string;
   submitLabel: string;
   initialValues?: TodoPayload;
-  onSubmit: (values: TodoPayload) => Promise<void>;
+  onSubmit: (values: any) => Promise<void>;
 };
 
 const defaultValues: TodoPayload = {
