@@ -1,123 +1,73 @@
-import { useState } from "react";
-import type { TodoPriority, TodoStatus } from "../../lib/types";
-import type { TodoPayload } from "./todoApi";
+import { useState } from 'react';
+import type { TodoPriority, TodoStatus } from '../../lib/types';
+import type { TodoPayload } from './todoApi';
 
-type TodoFormProps = {
-  title: string;
+type Props = {
   submitLabel: string;
   initialValues?: TodoPayload;
-  onSubmit: (values: any) => Promise<void>;
+  onSubmit: (values: TodoPayload) => Promise<void>;
 };
 
-const defaultValues: TodoPayload = {
-  title: "",
-  notes: "",
-  priority: "medium",
-  status: "todo",
-  dueDate: "",
-};
+const defaultValues: TodoPayload = { title: '', notes: '', priority: 'medium', status: 'todo', dueDate: '' };
 
-const priorityOptions: TodoPriority[] = ["low", "medium", "high"];
-const statusOptions: TodoStatus[] = ["todo", "in-progress", "done"];
-
-export default function TodoForm({
-  title,
-  submitLabel,
-  initialValues = defaultValues,
-  onSubmit,
-}: TodoFormProps) {
+export default function TodoForm({ submitLabel, initialValues = defaultValues, onSubmit }: Props) {
   const [values, setValues] = useState<TodoPayload>(initialValues);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  function updateField<K extends keyof TodoPayload>(field: K, value: TodoPayload[K]) {
-    setValues((current) => ({ ...current, [field]: value }));
+  function set<K extends keyof TodoPayload>(k: K, v: TodoPayload[K]) {
+    setValues(cur => ({ ...cur, [k]: v }));
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsSubmitting(true);
-
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
     try {
-      await onSubmit({
-        ...values,
-        title: values.title.trim(),
-        notes: values.notes.trim(),
-      });
-
-      if (!initialValues.title) {
-        setValues(defaultValues);
-      }
+      await onSubmit({ ...values, title: values.title.trim(), notes: values.notes.trim() });
+      if (!initialValues.title) setValues(defaultValues);
     } finally {
-      setIsSubmitting(false);
+      setBusy(false);
     }
   }
 
   return (
-    <form className="tool-form" onSubmit={handleSubmit}>
-      <div className="section-title">{title}</div>
-
-      <label className="field">
-        <span>Task title</span>
-        <input
-          required
-          maxLength={80}
-          placeholder="Add a task"
-          value={values.title}
-          onChange={(event) => updateField("title", event.target.value)}
-        />
-      </label>
-
-      <label className="field">
-        <span>Notes</span>
-        <textarea
-          rows={3}
-          placeholder="Optional details"
-          value={values.notes}
-          onChange={(event) => updateField("notes", event.target.value)}
-        />
-      </label>
-
-      <div className="field-grid">
-        <label className="field">
-          <span>Priority</span>
-          <select
-            value={values.priority}
-            onChange={(event) => updateField("priority", event.target.value as TodoPriority)}
-          >
-            {priorityOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="field">
-          <span>Status</span>
-          <select
-            value={values.status}
-            onChange={(event) => updateField("status", event.target.value as TodoStatus)}
-          >
-            {statusOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
+    <form className="form" onSubmit={handleSubmit}>
+      <div className="field">
+        <label className="field-label" htmlFor="tf-title">Task title</label>
+        <input id="tf-title" className="input" required maxLength={80} placeholder="What needs to be done?"
+          value={values.title} onChange={e => set('title', e.target.value)} />
       </div>
 
-      <label className="field">
-        <span>Due date</span>
-        <input
-          type="date"
-          value={values.dueDate}
-          onChange={(event) => updateField("dueDate", event.target.value)}
-        />
-      </label>
+      <div className="field">
+        <label className="field-label" htmlFor="tf-notes">Notes</label>
+        <textarea id="tf-notes" className="input" rows={3} placeholder="Optional details…"
+          value={values.notes} onChange={e => set('notes', e.target.value)} />
+      </div>
 
-      <button className="button button--primary button--full" disabled={isSubmitting} type="submit">
-        {isSubmitting ? "Saving..." : submitLabel}
+      <div className="field-row">
+        <div className="field">
+          <label className="field-label" htmlFor="tf-priority">Priority</label>
+          <select id="tf-priority" className="input"
+            value={values.priority} onChange={e => set('priority', e.target.value as TodoPriority)}>
+            {(['low', 'medium', 'high'] as TodoPriority[]).map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label className="field-label" htmlFor="tf-status">Status</label>
+          <select id="tf-status" className="input"
+            value={values.status} onChange={e => set('status', e.target.value as TodoStatus)}>
+            {(['todo', 'in-progress', 'done'] as TodoStatus[]).map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="field">
+        <label className="field-label" htmlFor="tf-due">Due date</label>
+        <input id="tf-due" className="input" type="date"
+          value={values.dueDate} onChange={e => set('dueDate', e.target.value)} />
+      </div>
+
+      <button className="btn btn-primary" style={{ width: '100%' }} disabled={busy} type="submit">
+        {busy ? <><span className="spinner" /> Saving…</> : submitLabel}
       </button>
     </form>
   );

@@ -2,7 +2,7 @@
   "name": "localmockdb-react-demo",
   "private": true,
   "version": "1.0.0",
-  "homepage": "https://shrikant9907.github.io/localmockdb-demo/",  
+  "homepage": "https://shrikant9907.github.io/localmockdb-demo/",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "localmockdb": "^1.0.3",
+    "lucide-react": "^1.9.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

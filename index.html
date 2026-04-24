@@ -3,11 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>localmockdb React Demo</title>
-    <meta
-      name="description"
-      content="A complete React demo project for testing localmockdb CRUD and localStorage persistence."
-    />
+    <title>LocalMockDB — Mock Database Developer Tool</title>
+    <meta name="description" content="LocalMockDB is a developer tool for managing local mock databases with full CRUD operations and localStorage persistence." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <script>
+      (function () {
+        try {
+          var s = localStorage.getItem('lmdb-theme');
+          var p = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', s || p);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

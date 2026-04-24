@@ -1,6 +1,7 @@
-import type { TodoRecord } from "../../lib/types";
+import { Check, Pencil, Trash2, Calendar, ClipboardList } from 'lucide-react';
+import type { TodoRecord } from '../../lib/types';
 
-type TodoListProps = {
+type Props = {
   todos: TodoRecord[];
   selectedId: string;
   onSelect: (id: string) => void;
@@ -9,83 +10,67 @@ type TodoListProps = {
   onDelete: (todo: TodoRecord) => void;
 };
 
-export default function TodoList({
-  todos,
-  selectedId,
-  onSelect,
-  onToggleStatus,
-  onEdit,
-  onDelete,
-}: TodoListProps) {
+const priorityClass: Record<string, string> = {
+  high: 'badge-error',
+  medium: 'badge-warning',
+  low: 'badge-neutral',
+};
+
+const statusClass: Record<string, string> = {
+  done: 'badge-success',
+  'in-progress': 'badge-info',
+  todo: 'badge-neutral',
+};
+
+export default function TodoList({ todos, selectedId, onSelect, onToggleStatus, onEdit, onDelete }: Props) {
   if (todos.length === 0) {
     return (
-      <div className="empty-panel">
-        <strong>No tasks yet.</strong>
-        <span>Create one or seed demo todos when you want test data.</span>
+      <div className="empty-state">
+        <div className="empty-state__icon"><ClipboardList /></div>
+        <div className="empty-state__title">No tasks yet</div>
+        <div className="empty-state__desc">Create a task or seed demo data to get started.</div>
       </div>
     );
   }
 
   return (
     <div className="todo-list">
-      {todos && todos?.reverse().map((todo) => {
+      {[...todos].reverse().map(todo => {
+        const isDone = todo.status === 'done';
         const isSelected = todo.id === selectedId;
-        const isDone = todo.status === "done";
-
         return (
           <article
             key={todo.id}
-            className={`todo-card${isSelected ? " is-selected" : ""}`}
+            className={`todo-card${isSelected ? ' selected' : ''}`}
             onClick={() => onSelect(todo.id)}
           >
             <div className="todo-card__top">
               <button
-                className={`todo-check${isDone ? " is-done" : ""}`}
+                className={`todo-check${isDone ? ' done' : ''}`}
                 type="button"
-                aria-label={isDone ? "Mark as not done" : "Mark as done"}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  void onToggleStatus(todo);
-                }}
+                aria-label={isDone ? 'Mark as not done' : 'Mark as done'}
+                onClick={e => { e.stopPropagation(); void onToggleStatus(todo); }}
               >
-                {isDone ? "✓" : ""}
+                {isDone && <Check strokeWidth={3} />}
               </button>
 
               <div className="todo-card__content">
                 <div className="todo-card__title-row">
-                  <h3>{todo.title}</h3>
-                  <span className={`tag tag--${todo.priority}`}>{todo.priority}</span>
+                  <span className={`todo-card__title${isDone ? ' done-text' : ''}`}>{todo.title}</span>
+                  <span className={`badge ${priorityClass[todo.priority] ?? 'badge-neutral'}`}>{todo.priority}</span>
                 </div>
-
-                {todo.notes ? <p>{todo.notes}</p> : null}
-
+                {todo.notes && <p className="todo-card__notes">{todo.notes}</p>}
                 <div className="todo-card__meta">
-                  <span className="tag tag--neutral">{todo.status}</span>
-                  <span>{todo.dueDate ? `Due ${todo.dueDate}` : "No due date"}</span>
+                  <span className={`badge ${statusClass[todo.status] ?? 'badge-neutral'}`}>{todo.status}</span>
+                  {todo.dueDate && (
+                    <span className="meta-tag"><Calendar />{todo.dueDate}</span>
+                  )}
                 </div>
+              </div>
 
-                <div className="todo-card__actions">
-                  <button
-                    className="button button--ghost todo-action-button"
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onEdit(todo);
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="button button--danger todo-action-button"
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onDelete(todo);
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
+              <div className="todo-card__actions" onClick={e => e.stopPropagation()}>
+                <button className="btn-icon" aria-label="Edit" onClick={() => onEdit(todo)}><Pencil /></button>
+                <button className="btn-icon" aria-label="Delete" onClick={() => onDelete(todo)}><Trash2 /></button>
               </div>
             </div>
           </article>
